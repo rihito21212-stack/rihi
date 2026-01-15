@@ -1,0 +1,114 @@
+const gameArea = document.getElementById("gameArea");
+const addBtn = document.getElementById("addFruit");
+const scoreDisplay = document.getElementById("score");
+
+let fruits = [];
+let idCounter = 0;
+let score = 0;
+
+// 完全進化リスト
+const evolution = [
+  {name:'サクランボ', color:'#FF4D4D', size:40, emoji:'🍒'},
+  {name:'イチゴ', color:'#FF1A1A', size:50, emoji:'🍓'},
+  {name:'ブドウ', color:'#800080', size:60, emoji:'🍇'},
+  {name:'デコポン', color:'#FFA500', size:70, emoji:'🍊'},
+  {name:'柿', color:'#FF8C00', size:80, emoji:'🍊'},
+  {name:'リンゴ', color:'#FF0000', size:90, emoji:'🍎'},
+  {name:'なし', color:'#ADFF2F', size:100, emoji:'🍐'},
+  {name:'桃', color:'#FFB6C1', size:110, emoji:'🍑'},
+  {name:'パイナップル', color:'#FFD700', size:120, emoji:'🍍'},
+  {name:'メロン', color:'#32CD32', size:130, emoji:'🍈'},
+  {name:'スイカ', color:'#FF6347', size:140, emoji:'🍉'}
+];
+
+// 果物生成
+function createFruit(level = 0) {
+  const fruit = document.createElement("div");
+  fruit.classList.add("fruit");
+  fruit.dataset.level = level;
+  fruit.dataset.id = idCounter++;
+  setFruitStyle(fruit, level);
+  fruit.style.left = Math.random() * (gameArea.offsetWidth - evolution[level].size) + "px";
+  fruit.style.top = Math.random() * (gameArea.offsetHeight - evolution[level].size) + "px";
+  gameArea.appendChild(fruit);
+  fruits.push(fruit);
+  makeDraggable(fruit);
+}
+
+// スタイル設定
+function setFruitStyle(fruit, level) {
+  const evo = evolution[level];
+  fruit.style.width = evo.size + 'px';
+  fruit.style.height = evo.size + 'px';
+  fruit.style.backgroundColor = evo.color;
+  fruit.textContent = evo.emoji;
+  fruit.style.fontSize = evo.size/2 + 'px';
+}
+
+// ドラッグ機能
+function makeDraggable(fruit) {
+  let offsetX, offsetY, isDragging = false;
+
+  fruit.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    offsetX = e.offsetX;
+    offsetY = e.offsetY;
+    fruit.style.zIndex = 1000;
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    let x = e.clientX - gameArea.getBoundingClientRect().left - offsetX;
+    let y = e.clientY - gameArea.getBoundingClientRect().top - offsetY;
+    const level = parseInt(fruit.dataset.level);
+    const size = evolution[level].size;
+    x = Math.max(0, Math.min(x, gameArea.offsetWidth - size));
+    y = Math.max(0, Math.min(y, gameArea.offsetHeight - size));
+    fruit.style.left = x + "px";
+    fruit.style.top = y + "px";
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (!isDragging) return;
+    isDragging = false;
+    fruit.style.zIndex = 1;
+    checkCollision(fruit);
+  });
+}
+
+// 衝突判定＆進化
+function checkCollision(fruit) {
+  const level = parseInt(fruit.dataset.level);
+  fruits.forEach(other => {
+    if (other === fruit) return;
+    const otherLevel = parseInt(other.dataset.level);
+
+    const rect1 = fruit.getBoundingClientRect();
+    const rect2 = other.getBoundingClientRect();
+
+    if (level === otherLevel &&
+        !(rect1.right < rect2.left ||
+          rect1.left > rect2.right ||
+          rect1.bottom < rect2.top ||
+          rect1.top > rect2.bottom)) {
+      
+      const newLevel = Math.min(level + 1, evolution.length - 1);
+      fruit.dataset.level = newLevel;
+      setFruitStyle(fruit, newLevel);
+
+      // 合体アニメーション
+      fruit.style.transform = "scale(1.2)";
+      setTimeout(() => fruit.style.transform = "scale(1)", 200);
+
+      // 元の果物削除
+      gameArea.removeChild(other);
+      fruits = fruits.filter(f => f !== other);
+
+      // スコア加算
+      score += (newLevel+1) * 10;
+      scoreDisplay.textContent = "Score: " + score;
+    }
+  });
+}
+
+addBtn.addEventListener("click", () => createFruit());
